@@ -248,7 +248,12 @@ async function loadPublic(){
   return XLSX.read(await r.arrayBuffer(),{type:'array',cellDates:true});
 }
 async function ghFetch(path,opt={}){
-  const r=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/${path}`,{...opt,headers:{'Authorization':'Bearer '+gh.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.headers||{})}});
+  const url=`https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}`+(path?'/'+path:'');
+  const headers={'Authorization':'Bearer '+gh.token,'Accept':'application/vnd.github+json'};
+  if(opt.body)headers['Content-Type']='application/json';
+  let r;
+  try{r=await fetch(url,{...opt,headers,cache:'no-store'})}
+  catch(err){const e=new Error('Your browser could not reach api.github.com. Check that it isn’t blocked by an ad-blocker, privacy extension or office firewall, then try again.');e.status=0;throw e}
   if(!r.ok){let m='';try{m=(await r.json()).message}catch(_){};const e=new Error(m||('GitHub error '+r.status));e.status=r.status;throw e}
   return r.json();
 }
@@ -414,14 +419,14 @@ $('sCancel').onclick=()=>$('sDlg').close();
 $('sOut').onclick=async()=>{gh=null;sha=null;clearCreds();setMode();$('sDlg').close();try{await reload()}catch(e){notice(e.message,'err')}};
 $('sForm').onsubmit=async ev=>{
   ev.preventDefault();
-  const c={owner:$('sOwner').value.trim(),repo:$('sRepo').value.trim(),branch:$('sBranch').value.trim(),path:$('sPath').value.trim().replace(/^\/+/,''),token:$('sToken').value.trim()};
+  const c={owner:$('sOwner').value.trim(),repo:$('sRepo').value.trim(),branch:$('sBranch').value.trim(),path:$('sPath').value.trim().replace(/^\/+/,''),token:$('sToken').value.replace(/[^\x21-\x7E]/g,'')};
   $('sGo').disabled=true;$('sErr').textContent='Checking…';
   const prev=gh;gh=c;
   try{
     const repo=await ghFetch('');
     if(repo.permissions&&!repo.permissions.push)throw new Error('This token can read the repository but not write to it.');
     await reload();saveCreds(c,$('sRemember').checked);setMode();$('sDlg').close();notice('Signed in. Your changes save straight to the Excel file in GitHub.','ok',4000);
-  }catch(e){gh=prev;$('sErr').textContent=e.status===401?'GitHub rejected this token.':e.status===404?'Repository or Excel file not found, or the token has no access to it.':e.message}
+  }catch(e){gh=prev;$('sErr').textContent=e.status===0?e.message:e.status===401?'GitHub rejected this token.':e.status===404?'Repository or Excel file not found, or the token has no access to it.':e.message}
   $('sGo').disabled=false;
 };
 
