@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Management Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f6f7f9;--card:#fff;--ink:#1c2230;--muted:#6b7385;--line:#e3e6ec;--accent:#2f5bea;--accent-soft:#e8eefe;
+  --ooo:#d9485f;--leave:#e8833a;--travel:#2a9d8f;--wfh:#7b61c9;--holiday:#8a8f9c;--meeting:#2f5bea;--event:#c2930a;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#12151c;--card:#1b2029;--ink:#e8ebf1;--muted:#98a0b0;--line:#2c3340;--accent:#6d8cff;--accent-soft:#232c45;}
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:18px 22px 6px;max-width:1300px;margin:0 auto}
+h1{font-size:20px;margin:0;font-weight:700}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.danger{color:var(--ooo)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.wrap{padding:8px 22px 30px;max-width:1300px;margin:0 auto}
+.today{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.today b{margin-right:4px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;background:var(--accent-soft)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.toolbar .month{font-size:17px;font-weight:600;min-width:160px;text-align:center}
+.toolbar .spacer{flex:1}
+select,input,textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tabs button{border:0;background:var(--card);padding:7px 12px;cursor:pointer}
+.tabs button.on{background:var(--accent);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);background:var(--line);gap:1px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.dow{background:var(--card);padding:7px;font-size:12px;color:var(--muted);font-weight:600;text-align:center}
+.cell{background:var(--card);min-height:108px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.editing .cell{cursor:pointer}
+.editing .cell:hover{background:var(--accent-soft)}
+.cell.other{opacity:.45}
+.cell.weekend{background:color-mix(in srgb,var(--card) 92%,var(--muted))}
+.cell .num{font-size:12px;font-weight:600;color:var(--muted)}
+.cell.is-today .num{background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:grid;place-items:center}
+.ev{font-size:11.5px;border-radius:5px;padding:2px 6px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.more{font-size:11px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:12px 2px;color:var(--muted);font-size:12.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:var(--radius)}
+.row{display:grid;grid-template-columns:150px 1fr auto;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center;cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--accent-soft)}
+.row .when{font-weight:600;font-size:13px}
+.row .meta{color:var(--muted);font-size:12.5px}
+.tag{font-size:11.5px;color:#fff;border-radius:5px;padding:2px 8px}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.notice{border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;display:none}
+.notice.warn{background:#fff4e0;color:#7a4b00;border:1px solid #f1d39a}
+.notice.ok{background:#e6f6ee;color:#14532d;border:1px solid #a7dcc0}
+.notice.err{background:#fde8eb;color:#7f1d2d;border:1px solid #f2b8c2}
+.badge{font-size:12px;border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:0;width:min(480px,94vw)}
+dialog::backdrop{background:rgba(10,14,22,.45)}
+.dlg{padding:18px 20px}
+.dlg h2{margin:0 0 12px;font-size:17px}
+.dlg p{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.45}
+.f{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.f label{font-size:12px;color:var(--muted);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
+.actions .left{margin-right:auto}
+.people-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;margin:6px 0 12px}
+.people-list div{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.err{color:var(--ooo);font-size:12.5px;min-height:16px}
+.view-only [data-edit]{display:none!important}
+.check{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:10px}
+@media (max-width:700px){.cell{min-height:70px}.ev{font-size:10px;padding:1px 4px}.row{grid-template-columns:1fr}.toolbar .month{min-width:auto}}
+</style>
+</head>
+<body class="view-only">
+<header>
+  <div>
+    <h1>Management Calendar</h1>
+    <div class="sub">Out-of-office, leave and travel for the leadership team, plus key meetings and events.</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="badge" id="modeBadge">View only</span>
+    <a class="btn" id="xlsxLink" href="data/management-calendar.xlsx">Download Excel</a>
+    <button class="btn" id="peopleBtn" data-edit>Manage people</button>
+    <button class="btn primary" id="addBtn" data-edit>+ Add entry</button>
+    <button class="btn" id="editBtn">Sign in to edit</button>
+  </div>
+</header>
+<div class="wrap">
+  <div class="notice" id="notice"></div>
+  <div class="today" id="todayBar"></div>
+  <div class="toolbar">
+    <button class="btn" id="prev">‹</button>
+    <div class="month" id="monthLabel"></div>
+    <button class="btn" id="next">›</button>
+    <button class="btn" id="todayBtn">Today</button>
+    <div class="spacer"></div>
+    <select id="fPerson"><option value="">Everyone</option></select>
+    <select id="fType"><option value="">All types</option></select>
+    <div class="tabs"><button id="vMonth" class="on">Month</button><button id="vList">Upcoming</button></div>
+  </div>
+  <div id="view"></div>
+  <div class="legend" id="legend"></div>
+  <div class="sub" id="source"></div>
+</div>
+
+<!-- Entry dialog -->
+<dialog id="evDlg"><form class="dlg" id="evForm">
+  <h2 id="evTitle">Add entry</h2>
+  <div class="f"><label>Type</label><select id="eType"></select></div>
+  <div class="f" id="personField"><label>Person</label><select id="ePerson"></select></div>
+  <div class="f" id="titleField"><label>Title</label><input id="eName" placeholder="e.g. Board review, client visit"></div>
+  <div class="two">
+    <div class="f"><label>From</label><input type="date" id="eStart" required></div>
+    <div class="f"><label>To</label><input type="date" id="eEnd" required></div>
+  </div>
+  <div class="f"><label>Backup / delegate (optional)</label><input id="eBackup" placeholder="Who covers while they're away"></div>
+  <div class="f"><label>Notes (optional)</label><textarea id="eNote" rows="2" placeholder="Reachable on phone, half-day, location…"></textarea></div>
+  <div class="err" id="eErr"></div>
+  <div class="actions">
+    <button type="button" class="btn danger left" id="eDelete" hidden data-edit>Delete</button>
+    <button type="button" class="btn" id="eCancel">Close</button>
+    <button type="submit" class="btn primary" id="eSave" data-edit>Save</button>
+  </div>
+</form></dialog>
+
+<!-- People dialog -->
+<dialog id="pDlg"><form class="dlg" id="pForm">
+  <h2>Management team</h2>
+  <div class="two" style="grid-template-columns:1fr auto">
+    <input id="pName" placeholder="Name, e.g. Ranganath Shenoy">
+    <button type="submit" class="btn primary" id="pAdd">Add</button>
+  </div>
+  <div class="people-list" id="pList"></div>
+  <div class="err" id="pErr"></div>
+  <div class="actions"><button type="button" class="btn" id="pClose">Done</button></div>
+</form></dialog>
+
+<!-- Sign-in dialog -->
+<dialog id="sDlg"><form class="dlg" id="sForm">
+  <h2>Sign in to edit</h2>
+  <p>Edits are saved straight into the Excel file in GitHub. Paste a GitHub fine-grained token that has <b>Contents: Read and write</b> on this repository only. The token stays in this browser and is sent only to GitHub.</p>
+  <div class="two">
+    <div class="f"><label>Repository owner</label><input id="sOwner" required></div>
+    <div class="f"><label>Repository name</label><input id="sRepo" required></div>
+  </div>
+  <div class="two">
+    <div class="f"><label>Branch</label><input id="sBranch" value="main" required></div>
+    <div class="f"><label>Excel path</label><input id="sPath" value="data/management-calendar.xlsx" required></div>
+  </div>
+  <div class="f"><label>GitHub token</label><input id="sToken" type="password" autocomplete="off" placeholder="github_pat_…" required></div>
+  <label class="check"><input type="checkbox" id="sRemember"> Remember on this device</label>
+  <div class="err" id="sErr"></div>
+  <div class="actions">
+    <button type="button" class="btn danger left" id="sOut" hidden>Sign out</button>
+    <button type="button" class="btn" id="sCancel">Cancel</button>
+    <button type="submit" class="btn primary" id="sGo">Sign in</button>
+  </div>
+</form></dialog>
+
+<script>
+/* ---------- config ---------- */
+const XLSX_PATH='data/management-calendar.xlsx';
+const TYPES=[
+  {k:'ooo',label:'Out of office',c:'var(--ooo)',personal:true},
+  {k:'leave',label:'Leave',c:'var(--leave)',personal:true},
+  {k:'travel',label:'Business travel',c:'var(--travel)',personal:true},
+  {k:'wfh',label:'Remote / WFH',c:'var(--wfh)',personal:true},
+  {k:'holiday',label:'Company holiday',c:'var(--holiday)',personal:false},
+  {k:'meeting',label:'Meeting',c:'var(--meeting)',personal:false},
+  {k:'event',label:'Event',c:'var(--event)',personal:false},
+];
+const T=Object.fromEntries(TYPES.map(t=>[t.k,t]));
+const byLabel=Object.fromEntries(TYPES.map(t=>[t.label.toLowerCase(),t.k]));
+const HEAD=['ID','Type','Person','Title','Start','End','Backup','Notes','Updated'];
+
+/* ---------- helpers ---------- */
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayISO=()=>iso(new Date());
+const parseISO=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const fmt=s=>parseISO(s).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+const fmtRange=e=>e.start===e.end?fmt(e.start):`${fmt(e.start)} – ${fmt(e.end)}`;
+const days=e=>Math.round((parseISO(e.end)-parseISO(e.start))/864e5)+1;
+const uid=()=>'E'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase();
+const label=e=>T[e.type]?.personal?(e.person||'Someone'):(e.title||T[e.type]?.label||'Entry');
+const esc=s=>{const d=document.createElement('div');d.textContent=s??'';return d.innerHTML};
+function notice(msg,kind='warn',ms){const n=$('notice');n.className='notice '+kind;n.textContent=msg;n.style.display=msg?'block':'none';if(ms)setTimeout(()=>{if(n.textContent===msg)n.style.display='none'},ms)}
+
+function toISO(v){
+  if(v==null||v==='')return '';
+  if(v instanceof Date)return iso(new Date(v.getFullYear(),v.getMonth(),v.getDate()+(v.getHours()>=12?1:0)));
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${pad(d.m)}-${pad(d.d)}`:''}
+  const s=String(v).trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);if(m)return `${m[3]}-${pad(m[2])}-${pad(m[1])}`; // dd/mm/yyyy
+  const d=new Date(s);return isNaN(d)?'':iso(d);
+}
+
+/* ---------- state ---------- */
+let people=[], events=[], cur=new Date(), view='month', editing=null, gh=null, sha=null;
+cur.setDate(1);
+
+/* ---------- Excel <-> data ---------- */
+function fromWorkbook(wb){
+  const es=wb.Sheets['Entries'], ps=wb.Sheets['People'];
+  if(!es)throw new Error('The Excel file has no "Entries" sheet.');
+  const rows=XLSX.utils.sheet_to_json(es,{defval:''});
+  const ev=rows.map(r=>{
+    const type=byLabel[String(r.Type).trim().toLowerCase()]||String(r.Type).trim().toLowerCase();
+    let start=toISO(r.Start), end=toISO(r.End)||start;
+    if(end<start)[start,end]=[end,start];
+    return {id:String(r.ID||'').trim()||uid(),type,person:String(r.Person||'').trim(),title:String(r.Title||'').trim(),
+      start,end,backup:String(r.Backup||'').trim(),note:String(r.Notes||'').trim(),updated:String(r.Updated||'')};
+  }).filter(e=>e.start&&T[e.type]);
+  const pp=ps?XLSX.utils.sheet_to_json(ps,{defval:''}).map(r=>String(r.Name||'').trim()).filter(Boolean):[];
+  // people named in entries but missing from the People sheet still show up
+  ev.forEach(e=>{if(e.person&&!pp.includes(e.person))pp.push(e.person)});
+  return {events:ev,people:[...new Set(pp)].sort((a,b)=>a.localeCompare(b))};
+}
+function toWorkbook(data,base){
+  const wb=XLSX.utils.book_new();
+  const rows=[...data.events].sort((a,b)=>a.start.localeCompare(b.start)).map(e=>[e.id,T[e.type].label,e.person,e.title,parseISO(e.start),parseISO(e.end),e.backup,e.note,e.updated]);
+  const es=XLSX.utils.aoa_to_sheet([HEAD,...rows],{cellDates:true,dateNF:'yyyy-mm-dd'});
+  es['!cols']=[14,18,22,30,13,13,20,40,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,es,'Entries');
+  const ps=XLSX.utils.aoa_to_sheet([['Name'],...data.people.map(p=>[p])]);ps['!cols']=[{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ps,'People');
+  if(base&&base.Sheets['How to use'])XLSX.utils.book_append_sheet(wb,base.Sheets['How to use'],'How to use');
+  return wb;
+}
+
+/* ---------- loading ---------- */
+async function loadPublic(){
+  const r=await fetch(XLSX_PATH+'?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('Could not load '+XLSX_PATH+' ('+r.status+')');
+  return XLSX.read(await r.arrayBuffer(),{type:'array',cellDates:true});
+}
+async function ghFetch(path,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/${path}`,{...opt,headers:{'Authorization':'Bearer '+gh.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.headers||{})}});
+  if(!r.ok){let m='';try{m=(await r.json()).message}catch(_){};const e=new Error(m||('GitHub error '+r.status));e.status=r.status;throw e}
+  return r.json();
+}
+async function loadFromGitHub(){
+  const j=await ghFetch(`contents/${gh.path}?ref=${encodeURIComponent(gh.branch)}`);
+  sha=j.sha;
+  let b64=(j.content||'').replace(/\n/g,'');
+  if(!b64&&j.git_url){const blob=await ghFetch(`git/blobs/${j.sha}`);b64=blob.content.replace(/\n/g,'')}
+  return XLSX.read(b64,{type:'base64',cellDates:true});
+}
+let baseWb=null;
+async function reload(){
+  baseWb=gh?await loadFromGitHub():await loadPublic();
+  const d=fromWorkbook(baseWb);events=d.events;people=d.people;render();
+  $('source').textContent=gh?`Live from GitHub: ${gh.owner}/${gh.repo} · ${gh.branch} · ${gh.path}`:`Data: ${XLSX_PATH}. Edits from others can take a minute or two to appear here.`;
+}
+
+/* ---------- saving (fetch latest → apply change → commit) ---------- */
+let saving=false;
+async function commitChange(apply,message){
+  if(!gh)throw new Error('Sign in to edit.');
+  if(saving)throw new Error('A save is already in progress.');
+  saving=true;notice('Saving to GitHub…','warn');
+  try{
+    for(let attempt=0;attempt<3;attempt++){
+      const wb=await loadFromGitHub();
+      const data=fromWorkbook(wb);
+      apply(data);
+      const out=XLSX.write(toWorkbook(data,wb),{bookType:'xlsx',type:'base64',cellDates:true});
+      try{
+        const res=await ghFetch(`contents/${gh.path}`,{method:'PUT',body:JSON.stringify({message,content:out,sha,branch:gh.branch})});
+        sha=res.content.sha;events=data.events;people=data.people;baseWb=wb;render();
+        notice('Saved to GitHub.','ok',3000);return;
+      }catch(e){if(e.status===409||e.status===422){continue}throw e}
+    }
+    throw new Error('Someone else saved at the same moment. Please try again.');
+  }finally{saving=false}
+}
+
+/* ---------- rendering ---------- */
+function filtered(){const p=$('fPerson').value,t=$('fType').value;return events.filter(e=>(!p||e.person===p)&&(!t||e.type===t)).sort((a,b)=>a.start.localeCompare(b.start))}
+function renderSelects(){
+  const keep=$('fPerson').value;
+  $('fPerson').innerHTML='<option value="">Everyone</option>'+people.map(p=>`<option>${esc(p)}</option>`).join('');
+  $('fPerson').value=people.includes(keep)?keep:'';
+  if($('fType').options.length<=1){
+    $('fType').innerHTML='<option value="">All types</option>'+TYPES.map(t=>`<option value="${t.k}">${t.label}</option>`).join('');
+    $('eType').innerHTML=TYPES.map(t=>`<option value="${t.k}">${t.label}</option>`).join('');
+    $('legend').innerHTML=TYPES.map(t=>`<span><i class="dot" style="background:${t.c}"></i>${t.label}</span>`).join('');
+  }
+  $('ePerson').innerHTML=people.length?people.map(p=>`<option>${esc(p)}</option>`).join(''):'<option value="">Add people first (Manage people)</option>';
+}
+function renderToday(){
+  const t=todayISO(),now=events.filter(e=>e.start<=t&&e.end>=t);
+  let h='<b>Today:</b>';
+  if(!now.length)h+='<span class="sub" style="margin:0">Everyone is in. Nothing scheduled.</span>';
+  now.sort((a,b)=>(T[b.type].personal?1:0)-(T[a.type].personal?1:0)).forEach(e=>h+=`<span class="pill"><i class="dot" style="background:${T[e.type].c}"></i>${esc(label(e))}${T[e.type].personal?' · '+T[e.type].label:''}${e.backup?` · backup: ${esc(e.backup)}`:''}</span>`);
+  $('todayBar').innerHTML=h;
+}
+function renderMonth(){
+  $('monthLabel').textContent=cur.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const start=new Date(cur);start.setDate(1-((cur.getDay()+6)%7));
+  const list=filtered(),t=todayISO();
+  let h=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<42;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const s=iso(d);
+    if(i%7===0&&i>=28&&d.getMonth()!==cur.getMonth())break;
+    const evs=list.filter(e=>e.start<=s&&e.end>=s);
+    const cls=['cell',d.getMonth()!==cur.getMonth()?'other':'',(d.getDay()%6===0)?'weekend':'',s===t?'is-today':''].join(' ');
+    h+=`<div class="${cls}" data-date="${s}"><div class="num">${d.getDate()}</div>`+
+      evs.slice(0,4).map(e=>`<div class="ev" data-id="${esc(e.id)}" style="background:${T[e.type].c}" title="${esc(label(e))} · ${T[e.type].label} · ${fmtRange(e)}">${esc(label(e))}</div>`).join('')+
+      (evs.length>4?`<div class="more">+${evs.length-4} more</div>`:'')+`</div>`;
+  }
+  $('view').innerHTML=`<div class="grid">${h}</div>`;
+}
+function renderList(){
+  $('monthLabel').textContent='Upcoming';
+  const t=todayISO(),list=filtered().filter(e=>e.end>=t);
+  if(!list.length){$('view').innerHTML='<div class="list"><div class="empty">Nothing upcoming.</div></div>';return}
+  $('view').innerHTML='<div class="list">'+list.map(e=>`<div class="row" data-id="${esc(e.id)}">
+    <div class="when">${fmtRange(e)}<div class="meta">${days(e)} day${days(e)>1?'s':''}</div></div>
+    <div><div>${esc(label(e))}${T[e.type].personal&&e.title?` · ${esc(e.title)}`:''}</div>
+      <div class="meta">${e.backup?`Backup: ${esc(e.backup)}`:''}${e.backup&&e.note?' · ':''}${esc(e.note)}</div></div>
+    <span class="tag" style="background:${T[e.type].c}">${T[e.type].label}</span></div>`).join('')+'</div>';
+}
+function render(){renderSelects();renderToday();view==='month'?renderMonth():renderList()}
+
+/* ---------- entry dialog ---------- */
+function syncTypeFields(){const personal=T[$('eType').value].personal;$('personField').style.display=personal?'':'none';$('titleField').querySelector('label').textContent=personal?'Reason / title (optional)':'Title'}
+function setReadOnly(ro){$('evForm').querySelectorAll('input,select,textarea').forEach(el=>el.disabled=ro)}
+function openEvent(e,date){
+  editing=e||null;
+  $('evTitle').textContent=e?(gh?'Edit entry':label(e)):'Add entry';
+  $('eType').value=e?.type||'ooo';renderSelects();
+  if(e?.person){if(!people.includes(e.person))$('ePerson').insertAdjacentHTML('beforeend',`<option>${esc(e.person)}</option>`);$('ePerson').value=e.person}
+  else if($('fPerson').value)$('ePerson').value=$('fPerson').value;
+  $('eName').value=e?.title||'';$('eStart').value=e?.start||date||todayISO();$('eEnd').value=e?.end||date||$('eStart').value;
+  $('eBackup').value=e?.backup||'';$('eNote').value=e?.note||'';
+  $('eDelete').hidden=!e;$('eErr').textContent='';setReadOnly(!gh);syncTypeFields();$('evDlg').showModal();
+}
+$('eType').onchange=syncTypeFields;
+$('eStart').onchange=()=>{if(!$('eEnd').value||$('eEnd').value<$('eStart').value)$('eEnd').value=$('eStart').value};
+$('eCancel').onclick=()=>$('evDlg').close();
+$('evForm').onsubmit=async ev=>{
+  ev.preventDefault();if(!gh)return;
+  const type=$('eType').value,personal=T[type].personal;
+  const e={id:editing?.id||uid(),type,person:personal?$('ePerson').value:'',title:$('eName').value.trim(),start:$('eStart').value,end:$('eEnd').value,
+    backup:$('eBackup').value.trim(),note:$('eNote').value.trim(),updated:new Date().toISOString().slice(0,16).replace('T',' ')+' UTC'};
+  if(personal&&!e.person){$('eErr').textContent='Add the person under “Manage people” first.';return}
+  if(!personal&&!e.title){$('eErr').textContent='Give the entry a title.';return}
+  if(e.end<e.start){$('eErr').textContent='“To” date is before “From”.';return}
+  $('eSave').disabled=true;
+  try{await commitChange(d=>{const i=d.events.findIndex(x=>x.id===e.id);i>=0?d.events[i]=e:d.events.push(e);if(e.person&&!d.people.includes(e.person))d.people.push(e.person)},
+      `${editing?'Update':'Add'}: ${label(e)} – ${T[type].label} (${e.start}${e.end!==e.start?' to '+e.end:''})`);$('evDlg').close()}
+  catch(err){$('eErr').textContent=err.message;notice('')}
+  $('eSave').disabled=false;
+};
+$('eDelete').onclick=async()=>{
+  const b=$('eDelete');if(b.dataset.confirm!=='1'){b.dataset.confirm='1';b.textContent='Click again to delete';return}
+  try{const e=editing;await commitChange(d=>{d.events=d.events.filter(x=>x.id!==e.id)},`Remove: ${label(e)} – ${T[e.type].label} (${e.start})`);$('evDlg').close()}
+  catch(err){$('eErr').textContent=err.message;notice('')}
+};
+$('evDlg').addEventListener('close',()=>{$('eDelete').dataset.confirm='';$('eDelete').textContent='Delete'});
+
+/* ---------- people dialog ---------- */
+function renderPeople(){$('pList').innerHTML=people.length?people.map(p=>`<div><span>${esc(p)}</span><button type="button" class="btn danger" data-p="${esc(p)}">Remove</button></div>`).join(''):'<div class="sub" style="border:0">No one added yet.</div>'}
+$('peopleBtn').onclick=()=>{renderPeople();$('pErr').textContent='';$('pDlg').showModal();$('pName').focus()};
+$('pClose').onclick=()=>$('pDlg').close();
+$('pForm').onsubmit=async ev=>{
+  ev.preventDefault();const name=$('pName').value.trim();if(!name)return;
+  if(people.some(p=>p.toLowerCase()===name.toLowerCase())){$('pErr').textContent='Already on the list.';return}
+  $('pAdd').disabled=true;
+  try{await commitChange(d=>{if(!d.people.includes(name))d.people.push(name);d.people.sort((a,b)=>a.localeCompare(b))},`Add person: ${name}`);$('pName').value='';$('pErr').textContent='';renderPeople()}
+  catch(e){$('pErr').textContent=e.message;notice('')}
+  $('pAdd').disabled=false;
+};
+$('pList').onclick=async ev=>{
+  const name=ev.target.dataset?.p;if(!name)return;
+  if(events.some(e=>e.person===name)){$('pErr').textContent=`${name} still has calendar entries. Delete those first.`;return}
+  try{await commitChange(d=>{d.people=d.people.filter(p=>p!==name)},`Remove person: ${name}`);renderPeople()}catch(e){$('pErr').textContent=e.message;notice('')}
+};
+
+/* ---------- sign in ---------- */
+const STORE='mgmtcal.gh';
+function guessRepo(){
+  const host=location.hostname,seg=location.pathname.split('/').filter(Boolean);
+  if(host.endsWith('.github.io'))return {owner:host.split('.')[0],repo:seg[0]&&!seg[0].includes('.')?seg[0]:host};
+  return {owner:'',repo:''};
+}
+function loadCreds(){for(const s of [sessionStorage,localStorage]){try{const v=JSON.parse(s.getItem(STORE)||'null');if(v&&v.token)return v}catch(_){}}return null}
+function saveCreds(c,remember){try{sessionStorage.setItem(STORE,JSON.stringify(c));remember?localStorage.setItem(STORE,JSON.stringify(c)):localStorage.removeItem(STORE)}catch(_){}}
+function clearCreds(){try{sessionStorage.removeItem(STORE);localStorage.removeItem(STORE)}catch(_){}}
+function setMode(){
+  document.body.classList.toggle('view-only',!gh);document.body.classList.toggle('editing',!!gh);
+  $('modeBadge').textContent=gh?'Editing':'View only';$('editBtn').textContent=gh?'Signed in':'Sign in to edit';
+}
+$('editBtn').onclick=()=>{
+  const g=gh||loadCreds()||{...guessRepo(),branch:'main',path:XLSX_PATH};
+  $('sOwner').value=g.owner||'';$('sRepo').value=g.repo||'';$('sBranch').value=g.branch||'main';$('sPath').value=g.path||XLSX_PATH;
+  $('sToken').value=gh?gh.token:'';$('sOut').hidden=!gh;$('sErr').textContent='';$('sDlg').showModal();
+};
+$('sCancel').onclick=()=>$('sDlg').close();
+$('sOut').onclick=async()=>{gh=null;sha=null;clearCreds();setMode();$('sDlg').close();try{await reload()}catch(e){notice(e.message,'err')}};
+$('sForm').onsubmit=async ev=>{
+  ev.preventDefault();
+  const c={owner:$('sOwner').value.trim(),repo:$('sRepo').value.trim(),branch:$('sBranch').value.trim(),path:$('sPath').value.trim().replace(/^\/+/,''),token:$('sToken').value.trim()};
+  $('sGo').disabled=true;$('sErr').textContent='Checking…';
+  const prev=gh;gh=c;
+  try{
+    const repo=await ghFetch('');
+    if(repo.permissions&&!repo.permissions.push)throw new Error('This token can read the repository but not write to it.');
+    await reload();saveCreds(c,$('sRemember').checked);setMode();$('sDlg').close();notice('Signed in. Your changes save straight to the Excel file in GitHub.','ok',4000);
+  }catch(e){gh=prev;$('sErr').textContent=e.status===401?'GitHub rejected this token.':e.status===404?'Repository or Excel file not found, or the token has no access to it.':e.message}
+  $('sGo').disabled=false;
+};
+
+/* ---------- navigation ---------- */
+function setTab(){$('vMonth').classList.toggle('on',view==='month');$('vList').classList.toggle('on',view==='list')}
+$('prev').onclick=()=>{cur.setMonth(cur.getMonth()-1);view='month';setTab();render()};
+$('next').onclick=()=>{cur.setMonth(cur.getMonth()+1);view='month';setTab();render()};
+$('todayBtn').onclick=()=>{cur=new Date();cur.setDate(1);view='month';setTab();render()};
+$('fPerson').onchange=render;$('fType').onchange=render;
+$('vMonth').onclick=()=>{view='month';setTab();render()};
+$('vList').onclick=()=>{view='list';setTab();render()};
+$('addBtn').onclick=()=>openEvent(null);
+$('view').onclick=ev=>{
+  const el=ev.target.closest('[data-id]');
+  if(el){const e=events.find(x=>x.id===el.dataset.id);if(e)openEvent(e);return}
+  const cell=ev.target.closest('.cell');if(cell&&gh)openEvent(null,cell.dataset.date);
+};
+
+/* ---------- boot ---------- */
+(async()=>{
+  render();
+  if(typeof XLSX==='undefined'){notice('Could not load the Excel reader library. Check your internet connection and refresh.','err');return}
+  gh=loadCreds();setMode();
+  try{await reload()}
+  catch(e){
+    if(gh){gh=null;setMode();notice('Saved sign-in no longer works, so showing the public copy. Sign in again to edit.','warn');try{await reload()}catch(e2){notice(e2.message,'err')}}
+    else notice(e.message+(location.protocol==='file:'?' Open the page through GitHub Pages (or a local web server), not as a file.':''),'err');
+  }
+})();
+</script>
+</body>
+</html>
