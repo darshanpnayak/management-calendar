@@ -17,6 +17,7 @@
   :root{--bg:#12151c;--card:#1b2029;--ink:#e8ebf1;--muted:#98a0b0;--line:#2c3340;--accent:#6d8cff;--accent-soft:#232c45;}
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
 header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:18px 22px 6px;max-width:1300px;margin:0 auto}
 h1{font-size:20px;margin:0;font-weight:700}
@@ -91,7 +92,6 @@ dialog::backdrop{background:rgba(10,14,22,.45)}
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span class="badge" id="modeBadge">View only</span>
-    <a class="btn" id="xlsxLink" href="data/management-calendar.xlsx">Download Excel</a>
     <button class="btn" id="peopleBtn" data-edit>Manage people</button>
     <button class="btn primary" id="addBtn" data-edit>+ Add entry</button>
     <button class="btn" id="editBtn">Sign in to edit</button>
@@ -408,13 +408,14 @@ function saveCreds(c,remember){try{sessionStorage.setItem(STORE,JSON.stringify(c
 function clearCreds(){try{sessionStorage.removeItem(STORE);localStorage.removeItem(STORE)}catch(_){}}
 function setMode(){
   document.body.classList.toggle('view-only',!gh);document.body.classList.toggle('editing',!!gh);
-  $('modeBadge').textContent=gh?'Editing':'View only';$('editBtn').textContent=gh?'Signed in':'Sign in to edit';
+  $('modeBadge').textContent=gh?'Editing':'View only';$('modeBadge').style.cursor=gh?'pointer':'';$('modeBadge').title=gh?'Signed in. Click to sign out or change settings.':'';$('editBtn').hidden=!!gh;
 }
 $('editBtn').onclick=()=>{
   const g=gh||loadCreds()||{...guessRepo(),branch:'main',path:XLSX_PATH};
   $('sOwner').value=g.owner||'';$('sRepo').value=g.repo||'';$('sBranch').value=g.branch||'main';$('sPath').value=g.path||XLSX_PATH;
   $('sToken').value=gh?gh.token:'';$('sOut').hidden=!gh;$('sErr').textContent='';$('sDlg').showModal();
 };
+$('modeBadge').onclick=()=>{if(gh)$('editBtn').onclick()};
 $('sCancel').onclick=()=>$('sDlg').close();
 $('sOut').onclick=async()=>{gh=null;sha=null;clearCreds();setMode();$('sDlg').close();try{await reload()}catch(e){notice(e.message,'err')}};
 $('sForm').onsubmit=async ev=>{

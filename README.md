@@ -9,9 +9,11 @@ A shared calendar for the management team: out-of-office, leave, business travel
 
 | Who | What they do |
 |---|---|
-| **Anyone with the link** | Views the calendar (month view or upcoming list), filters by person or type, and downloads the Excel file. |
+| **Anyone with the link** | Views the calendar (month view or upcoming list), and filters by person or type. |
 | **Editors** | Click **Sign in to edit**, paste their GitHub token once, then add, edit or delete entries. Each save is committed straight into the Excel file in this repository. |
-| **Excel users** | Can also edit `data/management-calendar.xlsx` directly (download it, edit it, then upload it back here with **Add file → Upload files**). |
+| **Excel users** | Can also edit `data/management-calendar.xlsx` directly: open it in this repository, download it, edit it, then upload it back with **Add file → Upload files**. |
+
+Once an editor is signed in, the **Sign in to edit** button disappears. To sign out, click the **Editing** badge at the top.
 
 Each change shows up as its own commit, such as `Add: Ranganath Shenoy – Out of office (2026-11-02 to 2026-11-04)`, so the repository history doubles as an audit log.
 
@@ -46,4 +48,4 @@ Note: when the page saves, it rewrites the workbook. Column widths and data are 
 
 ## Privacy
 
-A GitHub Pages site is **publicly reachable by anyone who has the link**, even when the repository itself is private. The only exception is GitHub Enterprise Cloud with access control turned on. The Excel file can be downloaded from the site as well, so keep notes in it free of sensitive details.
+A GitHub Pages site is **publicly reachable by anyone who has the link**, even when the repository itself is private. The only exception is GitHub Enterprise Cloud with access control turned on. The Excel file can also be downloaded from the site's address, so keep notes in it free of sensitive details.
